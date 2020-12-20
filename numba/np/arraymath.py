@@ -13,7 +13,7 @@ import numpy as np
 
 import llvmlite.llvmpy.core as lc
 
-from numba import generated_jit
+from numba import generated_jit, literal_unroll
 from numba.core import types, cgutils
 from numba.core.extending import overload, overload_method, register_jitable
 from numba.np.numpy_support import as_dtype, type_can_asarray
@@ -4374,6 +4374,36 @@ def np_kaiser(M, beta):
         return _i0n(n, alpha, beta)
 
     return np_kaiser_impl
+
+
+@overload(np.lexsort)
+def np_lexsort(keys, axis=None):
+    for key in keys:
+        if not type_can_asarray(key):
+            raise TypingError("All key arguments to np.lexsort must be array-like")
+
+    if len(keys) == 0:
+        raise TypeError('need sequence of keys with len > 0 in lexsort')
+
+    # check matching shapes
+    arrays = [np.asarray(key) for key in keys]
+    if not all([arr.shape == arrays[0].shape for arr in arrays[1:]]):
+        raise ValueError('All keys need to be the same shape')
+
+    # for arr in literal_unroll(arrays[1:]):
+    #     if a.shape != arrays[0].shape:
+    #         raise ValueError("lexsort array shapes don't match")
+
+    if len(arrays) == 1:
+        return np.argsort(arrays[0], axis)
+
+    n = arrays[0].shape[0]
+    index_arr = np.arange(n)
+    from numba.misc import quicksort
+    # numpy.sort(a, axis=-1, kind=None, order=None)
+    quicksort(index_arr, 0, n - 1, *arrays)
+    #make_quicksort_impl()
+    return index_arr
 
 
 @register_jitable

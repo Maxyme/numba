@@ -341,6 +341,10 @@ def array_contains(a, key):
     return key in a
 
 
+def np_lexsort(x, y, axis):
+    return np.lexsort((x, y), axis=axis)
+
+
 class TestNPFunctions(MemoryLeakMixin, TestCase):
     """
     Tests for various Numpy functions.
@@ -3951,6 +3955,33 @@ class TestNPFunctions(MemoryLeakMixin, TestCase):
         with self.assertRaises(TypingError) as e:
             cfunc(np.array([1, 2, 3, 4]), 'float32')
         self.assertIn("dtype must be a valid Numpy dtype", str(e.exception))
+
+    def test_lexsort(self):
+        def arrays():
+            yield np.array([1, 5, 1, 4, 3, 4, 4]), np.array([9, 4, 0, 4, 0, 2, 1])
+            yield np.array([]), np.array([])
+            yield np.array([1, 2]), np.array([1, 2])
+            yield np.array([]), np.array([1])
+            x = np.arange(10).reshape(5, 2)
+            x[1][1] = 30
+            yield np.arange(10).reshape(5, 2), x
+            yield x, x
+            yield (1, 2, 3), (1, 2, 3)
+            yield 2, 2
+            yield 3, 2
+            yield True, True
+            yield True, False
+            yield True, 2
+            yield True, 1
+            yield False, 0
+
+        pyfunc = np_lexsort
+        cfunc = jit(nopython=True)(pyfunc)
+
+        for arr, obj in arrays():
+            expected = pyfunc(arr, obj)
+            got = cfunc(arr, obj)
+            self.assertPreciseEqual(expected, got)
 
 
 class TestNPMachineParameters(TestCase):
