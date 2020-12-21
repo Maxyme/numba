@@ -4377,33 +4377,35 @@ def np_kaiser(M, beta):
 
 
 @overload(np.lexsort)
-def np_lexsort(keys, axis=None):
-    for key in keys:
-        if not type_can_asarray(key):
-            raise TypingError("All key arguments to np.lexsort must be array-like")
+def np_lexsort(keys, axis=-1):
+    #if not all(type_can_asarray(key) for key in keys):
+    #    raise TypingError("All key arguments to np.lexsort must be array-like")
 
     if len(keys) == 0:
         raise TypeError('need sequence of keys with len > 0 in lexsort')
 
-    # check matching shapes
     arrays = [np.asarray(key) for key in keys]
     if not all([arr.shape == arrays[0].shape for arr in arrays[1:]]):
         raise ValueError('All keys need to be the same shape')
 
-    # for arr in literal_unroll(arrays[1:]):
-    #     if a.shape != arrays[0].shape:
-    #         raise ValueError("lexsort array shapes don't match")
-
     if len(arrays) == 1:
-        return np.argsort(arrays[0], axis)
+        return np.argsort(arrays[0][-1], axis)
 
-    n = arrays[0].shape[0]
-    index_arr = np.arange(n)
-    from numba.misc import quicksort
-    # numpy.sort(a, axis=-1, kind=None, order=None)
-    quicksort(index_arr, 0, n - 1, *arrays)
-    #make_quicksort_impl()
-    return index_arr
+    # create an array of column name and dtypes
+    # keys[0].shape[0]
+    #column_names = [f"f{i}" for i in range(len(keys))]
+    #dtypes = [(column_name, np.asarray(item).dtype.name) for column_name, item in zip(column_names, keys)]
+
+    # stack the arrays into a structured array
+    # arr = np.stack(keys, axis=1)
+
+    # arrays = list(tuple(map(tuple, arr)))
+    w = np.column_stack(keys)
+    #w = np.stack(keys, axis=axis)
+    #return_ndim = keys[0].shape[0]
+    #w = np.stack(keys, axis=axis)
+
+    return np.argsort(np.stack(keys), axis=axis)[-1]#[0]
 
 
 @register_jitable
@@ -4508,3 +4510,29 @@ def cross2d(a, b):
         return _cross2d_operation(a_, b_)
 
     return impl
+
+
+if __name__ == '__main__':
+    a = np.array([2, 1, 4, 3, 0], dtype=np.int32)
+    b = np.array([1, 2, 3, 4, 5], dtype=np.float64)
+    c = np.array([[1,2,3],
+                  [4,5,6],
+                  [7,8,9]])
+    d = np.array([[7,8,9],
+                 [4,5,6],
+                 [1,2,3]])
+    e = np.zeros((3, 3, 3))
+    e = np.array([[[1],
+                   [2]],
+                  [[1],
+                   [2]]])
+    f = np.ones((3, 3, 3)) #np.array([[[1],[0]], [[1],[2]]])
+    # a = [2, 1, 4, 3, 0]
+    # b = [1, 2, 3, 4, 5]
+    print("before lexsort")
+    #assert np.array_equal(np.lexsort((a,b)), np_lexsort((a,b)))
+    assert np.array_equal(np.lexsort((c,d), axis=0), np_lexsort((c,d), axis=0))
+    #assert np.array_equal(np.lexsort((e,f)), np_lexsort((e,f)))
+    #assert np.array_equal(np.lexsort((e, f), axis=0), np_lexsort((e, f), axis=0))
+    #print(np_lexsort((a, b)))
+    print("after lexsort")
