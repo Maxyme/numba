@@ -4454,7 +4454,7 @@ def _cross2d_operation(a, b):
     b0, b1 = _cross_preprocessing(b)
 
     cp = np.multiply(a0, b1) - np.multiply(a1, b0)
-    # If ndim of a and b is 1, cp is a scalar.
+    # If ndim of a and 452b is 1, cp is a scalar.
     # In this case np.cross returns a 0-D array, containing the scalar.
     # np.asarray is used to reconcile this case, without introducing
     # overhead in the case where cp is an actual N-D array.
@@ -4478,3 +4478,26 @@ def cross2d(a, b):
         return _cross2d_operation(a_, b_)
 
     return impl
+
+
+@overload(np.put)
+def np_put(a, ind, v, mode='raise'): #(a, trim='fb'):
+    if not isinstance(a, np.ndarray):
+        raise TypeError(f"TypeError: argument 1 must be numpy.ndarray, not {type(a)}")
+
+
+    for index_item, index in enumerate(ind):
+        # fetch the closest item:
+        #item = v[index]
+        item = v[index % len(v)]
+        a[index] = item
+    if mode="clip":
+        pass
+    if mode="wrap":
+        pass
+
+if __name__ == '__main__':
+    a = np.arange(5)
+    assert np.array_equal(np.put(a, [0, 2], [-44, -55]), np_put(a, [0, 2], [-44, -55]))
+    assert np.array_equal(np.put(a, [0, 1, 2, 3], [-44, -55])
+
